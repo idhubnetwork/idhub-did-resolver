@@ -1,6 +1,10 @@
 package resolver
 
-import "github.com/ethereum/go-ethereum/common"
+import (
+	"encoding/hex"
+
+	"github.com/ethereum/go-ethereum/common"
+)
 
 type DIDLog struct {
 	DidPublicKeyLogs      []LogPublicKeyChanged
@@ -50,4 +54,33 @@ func (r *resolver) GetDIDLogs(address string) *DIDLog {
 		}
 	}
 	return &DIDLog{DidPublicKeyLogs, DidAuthenticationLogs, DidAttributeLogs}
+}
+
+func (r *resolver) getDIDPublicKeys(address string, did DIDLog) []interface{} {
+	owner := r.IdentityOwner(address)
+	DIDPublicKeys := make([]interface{}, 0)
+	DIDPublicKeys = append(DIDPublicKeys, struct {
+		Id              string `json:"id"`
+		Type            string `json:"type"`
+		Owner           string `json:"owner"`
+		EthereumAddress string `json:"ethereumAddress"`
+	}{"did:idhub:" + address + "#owner",
+		"Secp256k1VerificationKey2018",
+		"did:idhub:" + address,
+		owner})
+	for i, logV := range did.DidPublicKeyLogs {
+		if r.ValidPublicKey(address, "veriKey",
+			hex.EncodeToString(logV.PublicKey[:])) {
+			DIDPublicKeys = append(DIDPublicKeys, struct {
+				Id           string `json:"id"`
+				Type         string `json:"type"`
+				Owner        string `json:"owner"`
+				PublicKeyHex string `json:"publicKeyHex"`
+			}{"did:idhub:" + address + "#" + string(i+1),
+				"Secp256k1VerificationKey2018",
+				"did:idhub:" + address,
+				hex.EncodeToString(logV.PublicKey[:])})
+		}
+	}
+	return DIDPublicKeys
 }
