@@ -18,7 +18,8 @@ func (r *resolver) ValidPublicKey(address, keyType, key string) bool {
 	copy(publickKeyType[:], keyType)
 	publickKey := [32]byte{}
 	copy(publickKey[:], key)
-	ok, err := instance.ValidPublicKey(nil, identity, publickKeyType, publickKey)
+	ok, err := instance.ValidPublicKey(nil, identity, publickKeyType,
+		publickKey)
 	if err != nil {
 	}
 	return ok
@@ -31,7 +32,8 @@ func (r *resolver) ValidAuthentication(address, keyType, key string) bool {
 	copy(authenticationType[:], keyType)
 	authentication := [32]byte{}
 	copy(authentication[:], key)
-	ok, err := instance.ValidPublicKey(nil, identity, authenticationType, authentication)
+	ok, err := instance.ValidPublicKey(nil, identity, authenticationType,
+		authentication)
 	if err != nil {
 	}
 	return ok
