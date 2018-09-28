@@ -1,15 +1,21 @@
 package resolver
 
 import (
+	"log"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	did "./contracts"
+	did "resolver/contracts"
 )
 
 type resolver struct {
 	client   *ethclient.Client
 	contract *did.Did
+	address  common.Address
+	abi      abi.ABI
 }
 
 var urls map[string]string
@@ -28,8 +34,14 @@ func NewResolver(net string, address string) *resolver {
 	if err != nil {
 	}
 	contractAddr := common.HexToAddress(address)
+	r.address = contractAddr
 	r.contract, err = did.NewDid(contractAddr, r.client)
 	if err != nil {
 	}
+	contractAbi, err := abi.JSON(strings.NewReader(string(did.DidABI)))
+	if err != nil {
+		log.Fatal(err)
+	}
+	r.abi = contractAbi
 	return r
 }
