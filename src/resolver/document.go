@@ -38,14 +38,26 @@ type DIDAttribute struct {
 	Value string `json:"type"`
 }
 
-func (r *resolver) GetDIDLogs(address string) *DIDLog {
+func (r *resolver) GetDIDLogs(address string) (*DIDLog, error) {
 	identity := common.HexToAddress(address)
-	publicKeyChanged := r.GetPublicKeyChanged(address)
-	authenticationChanged := r.GetAuthenticationChanged(address)
-	attributeChanged := r.GetAttributeChanged(address)
+	publicKeyChanged, err := r.GetPublicKeyChanged(address)
+	if err != nil {
+		return nil, err
+	}
+	authenticationChanged, err := r.GetAuthenticationChanged(address)
+	if err != nil {
+		return nil, err
+	}
+	attributeChanged, err := r.GetAttributeChanged(address)
+	if err != nil {
+		return nil, err
+	}
 	var DidPublicKeyLogs = make([]LogPublicKeyChanged, 0)
 	for publicKeyChanged.Sign() != 0 {
-		logPublicKeyChangeds := r.EventPublicKeyChanged(publicKeyChanged)
+		logPublicKeyChangeds, err := r.EventPublicKeyChanged(publicKeyChanged)
+		if err != nil {
+			return nil, err
+		}
 		for _, logV := range logPublicKeyChangeds {
 			if identity == logV.Identity {
 				DidPublicKeyLogs = append(DidPublicKeyLogs, logV)
@@ -57,7 +69,10 @@ func (r *resolver) GetDIDLogs(address string) *DIDLog {
 	}
 	var DidAuthenticationLogs = make([]LogAuthenticationChanged, 0)
 	for authenticationChanged.Sign() != 0 {
-		logAuthenticationChangeds := r.EventAuthenticationChanged(authenticationChanged)
+		logAuthenticationChangeds, err := r.EventAuthenticationChanged(authenticationChanged)
+		if err != nil {
+			return nil, err
+		}
 		for _, logV := range logAuthenticationChangeds {
 			if identity == logV.Identity {
 				DidAuthenticationLogs = append(DidAuthenticationLogs, logV)
@@ -69,7 +84,10 @@ func (r *resolver) GetDIDLogs(address string) *DIDLog {
 	}
 	var DidAttributeLogs = make([]LogAttributeChanged, 0)
 	for attributeChanged.Sign() != 0 {
-		logAttributeChangeds := r.EventAttributeChanged(attributeChanged)
+		logAttributeChangeds, err := r.EventAttributeChanged(attributeChanged)
+		if err != nil {
+			return nil, err
+		}
 		for _, logV := range logAttributeChangeds {
 			if identity == logV.Identity {
 				DidAttributeLogs = append(DidAttributeLogs, logV)
@@ -79,11 +97,14 @@ func (r *resolver) GetDIDLogs(address string) *DIDLog {
 			}
 		}
 	}
-	return &DIDLog{DidPublicKeyLogs, DidAuthenticationLogs, DidAttributeLogs}
+	return &DIDLog{DidPublicKeyLogs, DidAuthenticationLogs, DidAttributeLogs}, nil
 }
 
-func (r *resolver) getDIDPublicKeys(address string, did *DIDLog) []DIDPublicKey {
-	owner := r.IdentityOwner(address)
+func (r *resolver) getDIDPublicKeys(address string, did *DIDLog) ([]DIDPublicKey, error) {
+	owner, err := r.IdentityOwner(address)
+	if err != nil {
+		return nil, err
+	}
 	DIDPublicKeys := make([]DIDPublicKey, 0)
 	DIDPublicKeys = append(DIDPublicKeys, DIDPublicKey{
 		"did:idhub:" + address + "#owner",
@@ -91,8 +112,11 @@ func (r *resolver) getDIDPublicKeys(address string, did *DIDLog) []DIDPublicKey 
 		"did:idhub:" + address,
 		owner})
 	for i, logV := range did.DidPublicKeyLogs {
-		if r.ValidPublicKey(address, "veriKey",
-			hex.EncodeToString(logV.PublicKey[:])) {
+		ok, err := r.ValidPublicKey(address, "veriKey",
+			hex.EncodeToString(logV.PublicKey[:]))
+		if err != nil {
+			return nil, err
+		} else if ok {
 			DIDPublicKeys = append(DIDPublicKeys, DIDPublicKey{
 				"did:idhub:" + address + "#" + string(i+1),
 				"Secp256k1VerificationKey2018",
@@ -100,18 +124,24 @@ func (r *resolver) getDIDPublicKeys(address string, did *DIDLog) []DIDPublicKey 
 				hex.EncodeToString(logV.PublicKey[:])})
 		}
 	}
-	return DIDPublicKeys
+	return DIDPublicKeys, nil
 }
 
-func (r *resolver) getDIDAuthentications(address string, did *DIDLog) []DIDAuthentication {
-	DIDPublicKeys := r.getDIDPublicKeys(address, did)
+func (r *resolver) getDIDAuthentications(address string, did *DIDLog) ([]DIDAuthentication, error) {
+	DIDPublicKeys, err := r.getDIDPublicKeys(address, did)
+	if err != nil {
+		return nil, err
+	}
 	DIDAuthentications := make([]DIDAuthentication, 0)
 	DIDAuthentications = append(DIDAuthentications, DIDAuthentication{
 		"Secp256k1SignatureAuthentication2018",
 		"did:idhub:" + address + "#owner"})
 	for _, logV := range did.DidAuthenticationLogs {
-		if r.ValidAuthentication(address, "sigAuth",
-			hex.EncodeToString(logV.Authentication[:])) {
+		ok, err := r.ValidAuthentication(address, "sigAuth",
+			hex.EncodeToString(logV.Authentication[:]))
+		if err != nil {
+			return nil, err
+		} else if ok {
 			for _, v := range DIDPublicKeys {
 				if hex.EncodeToString(logV.Authentication[:]) ==
 					v.PublicKeyHex {
@@ -123,7 +153,7 @@ func (r *resolver) getDIDAuthentications(address string, did *DIDLog) []DIDAuthe
 			}
 		}
 	}
-	return DIDAuthentications
+	return DIDAuthentications, nil
 }
 
 func (r *resolver) getDIDAttributes(address string, did *DIDLog) []DIDAttribute {
@@ -136,21 +166,34 @@ func (r *resolver) getDIDAttributes(address string, did *DIDLog) []DIDAttribute 
 	return DIDAttributes
 }
 
-func (r *resolver) getDIDDocument(address string) *DIDDocument {
+func (r *resolver) getDIDDocument(address string) (*DIDDocument, error) {
 	var document *DIDDocument
 	document.Context = "https://w3id.org/did/v1"
 	document.Id = "did:idhub:" + address
-	did := r.GetDIDLogs(address)
-	document.PublicKey = r.getDIDPublicKeys(address, did)
-	document.Authentication = r.getDIDAuthentications(address, did)
+	did, err := r.GetDIDLogs(address)
+	if err != nil {
+		return nil, err
+	}
+	document.PublicKey, err = r.getDIDPublicKeys(address, did)
+	if err != nil {
+		return nil, err
+	}
+	document.Authentication, err = r.getDIDAuthentications(address, did)
+	if err != nil {
+		return nil, err
+	}
 	document.Service = r.getDIDAttributes(address, did)
-	return document
+	return document, nil
 }
 
-func (r *resolver) GetDocument(address string) string {
-	document := r.getDIDDocument(address)
+func (r *resolver) GetDocument(address string) (string, error) {
+	document, err := r.getDIDDocument(address)
+	if err != nil {
+		return "", err
+	}
 	data, err := json.Marshal(document)
 	if err != nil {
+		return "", err
 	}
-	return string(data)
+	return string(data), nil
 }

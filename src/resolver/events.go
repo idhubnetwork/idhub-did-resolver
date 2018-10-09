@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"context"
-	"log"
 	"math/big"
 
 	ethereum "github.com/ethereum/go-ethereum"
@@ -33,7 +32,7 @@ type LogAttributeChanged struct {
 	PreviousChange *big.Int
 }
 
-func (r *resolver) EventPublicKeyChanged(blockNumber *big.Int) []LogPublicKeyChanged {
+func (r *resolver) EventPublicKeyChanged(blockNumber *big.Int) ([]LogPublicKeyChanged, error) {
 	query := ethereum.FilterQuery{
 		FromBlock: blockNumber,
 		ToBlock:   blockNumber,
@@ -43,22 +42,22 @@ func (r *resolver) EventPublicKeyChanged(blockNumber *big.Int) []LogPublicKeyCha
 	}
 	logs, err := r.client.FilterLogs(context.Background(), query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	var logPublicKeyChangeds = make([]LogPublicKeyChanged, 0)
 	for _, vLog := range logs {
 		var logPublicKeyChanged LogPublicKeyChanged
 		err := r.abi.Unpack(&logPublicKeyChanged, "DIDPublicKeyChanged", vLog.Data)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		logPublicKeyChanged.Identity = common.HexToAddress(vLog.Topics[1].Hex())
 		logPublicKeyChangeds = append(logPublicKeyChangeds, logPublicKeyChanged)
 	}
-	return logPublicKeyChangeds
+	return logPublicKeyChangeds, nil
 }
 
-func (r *resolver) EventAuthenticationChanged(blockNumber *big.Int) []LogAuthenticationChanged {
+func (r *resolver) EventAuthenticationChanged(blockNumber *big.Int) ([]LogAuthenticationChanged, error) {
 	query := ethereum.FilterQuery{
 		FromBlock: blockNumber,
 		ToBlock:   blockNumber,
@@ -68,22 +67,22 @@ func (r *resolver) EventAuthenticationChanged(blockNumber *big.Int) []LogAuthent
 	}
 	logs, err := r.client.FilterLogs(context.Background(), query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	var logAuthenticationChangeds = make([]LogAuthenticationChanged, 0)
 	for _, vLog := range logs {
 		var logAuthenticationChanged LogAuthenticationChanged
 		err := r.abi.Unpack(&logAuthenticationChanged, "DIDAuthenticationChanged", vLog.Data)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		logAuthenticationChanged.Identity = common.HexToAddress(vLog.Topics[1].Hex())
 		logAuthenticationChangeds = append(logAuthenticationChangeds, logAuthenticationChanged)
 	}
-	return logAuthenticationChangeds
+	return logAuthenticationChangeds, nil
 }
 
-func (r *resolver) EventAttributeChanged(blockNumber *big.Int) []LogAttributeChanged {
+func (r *resolver) EventAttributeChanged(blockNumber *big.Int) ([]LogAttributeChanged, error) {
 	query := ethereum.FilterQuery{
 		FromBlock: blockNumber,
 		ToBlock:   blockNumber,
@@ -93,17 +92,17 @@ func (r *resolver) EventAttributeChanged(blockNumber *big.Int) []LogAttributeCha
 	}
 	logs, err := r.client.FilterLogs(context.Background(), query)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	var logAttributeChangeds = make([]LogAttributeChanged, 0)
 	for _, vLog := range logs {
 		var logAttributeChanged LogAttributeChanged
 		err := r.abi.Unpack(&logAttributeChanged, "DIDAttributeChanged", vLog.Data)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		logAttributeChanged.Identity = common.HexToAddress(vLog.Topics[1].Hex())
 		logAttributeChangeds = append(logAttributeChangeds, logAttributeChanged)
 	}
-	return logAttributeChangeds
+	return logAttributeChangeds, nil
 }
