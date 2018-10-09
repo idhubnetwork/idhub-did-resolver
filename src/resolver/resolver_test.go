@@ -5,7 +5,7 @@ import (
 )
 import "fmt"
 
-var contractAddress string = "0xde394C7393a08AF21ceD619B4712c098FDAe9B19"
+var contractAddress string = "0x23fb5aE3228800E4FB4bDC8e717abD50fb31c4eA"
 var identity string = "0x49dBa8f906c745B0a82f4D21E02BAFD7Df1a0be4"
 
 func TestNewResolver(t *testing.T) {

@@ -3,6 +3,7 @@ package resolver
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -125,7 +126,7 @@ func (r *resolver) getDIDPublicKeys(address string, did DIDLog) ([]DIDPublicKey,
 			return nil, err
 		} else if ok {
 			DIDPublicKeys = append(DIDPublicKeys, DIDPublicKey{
-				"did:idhub:" + address + "#" + string(i+1),
+				"did:idhub:" + address + "#" + strconv.Itoa(i+1),
 				"Secp256k1VerificationKey2018",
 				"did:idhub:" + address,
 				hexutil.Encode(logV.PublicKey[:])})
