@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 func (r *resolver) GetPublicKeyChanged(address string) (*big.Int, error) {
@@ -53,7 +54,11 @@ func (r *resolver) ValidPublicKey(address, keyType, key string) (bool, error) {
 	publickKeyType := [32]byte{}
 	copy(publickKeyType[:], keyType)
 	publickKey := [32]byte{}
-	copy(publickKey[:], key)
+	hexKey, err := hexutil.Decode(key)
+	if err != nil {
+		return false, err
+	}
+	copy(publickKey[:], hexKey)
 	ok, err := instance.ValidPublicKey(nil, identity, publickKeyType,
 		publickKey)
 	if err != nil {
@@ -68,7 +73,11 @@ func (r *resolver) ValidAuthentication(address, keyType, key string) (bool, erro
 	authenticationType := [32]byte{}
 	copy(authenticationType[:], keyType)
 	authentication := [32]byte{}
-	copy(authentication[:], key)
+	hexKey, err := hexutil.Decode(key)
+	if err != nil {
+		return false, err
+	}
+	copy(authentication[:], hexKey)
 	ok, err := instance.ValidAuthentication(nil, identity, authenticationType,
 		authentication)
 	if err != nil {

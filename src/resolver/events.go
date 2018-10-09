@@ -12,7 +12,7 @@ type LogPublicKeyChanged struct {
 	Identity       common.Address
 	PublicKeyType  [32]byte
 	PublicKey      [32]byte
-	ValidTO        *big.Int
+	ValidTo        *big.Int
 	PreviousChange *big.Int
 }
 
@@ -20,7 +20,7 @@ type LogAuthenticationChanged struct {
 	Identity           common.Address
 	AuthenticationType [32]byte
 	Authentication     [32]byte
-	ValidTO            *big.Int
+	ValidTo            *big.Int
 	PreviousChange     *big.Int
 }
 
@@ -28,7 +28,7 @@ type LogAttributeChanged struct {
 	Identity       common.Address
 	Name           [32]byte
 	Value          []byte
-	ValidTO        *big.Int
+	ValidTo        *big.Int
 	PreviousChange *big.Int
 }
 

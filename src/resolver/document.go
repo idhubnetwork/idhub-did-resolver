@@ -1,10 +1,11 @@
 package resolver
 
 import (
-	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type DIDLog struct {
@@ -34,30 +35,34 @@ type DIDAuthentication struct {
 }
 
 type DIDAttribute struct {
-	Name  string `json:"type"`
-	Value string `json:"type"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
-func (r *resolver) GetDIDLogs(address string) (*DIDLog, error) {
+func (r *resolver) GetDIDLogs(address string) (DIDLog, error) {
 	identity := common.HexToAddress(address)
 	publicKeyChanged, err := r.GetPublicKeyChanged(address)
 	if err != nil {
-		return nil, err
+		return DIDLog{}, err
 	}
+	// fmt.Println(publicKeyChanged)
 	authenticationChanged, err := r.GetAuthenticationChanged(address)
 	if err != nil {
-		return nil, err
+		return DIDLog{}, err
 	}
+	// fmt.Println(authenticationChanged)
 	attributeChanged, err := r.GetAttributeChanged(address)
 	if err != nil {
-		return nil, err
+		return DIDLog{}, err
 	}
+	// fmt.Println(attributeChanged)
 	var DidPublicKeyLogs = make([]LogPublicKeyChanged, 0)
 	for publicKeyChanged.Sign() != 0 {
 		logPublicKeyChangeds, err := r.EventPublicKeyChanged(publicKeyChanged)
 		if err != nil {
-			return nil, err
+			return DIDLog{}, err
 		}
+		fmt.Println(logPublicKeyChangeds)
 		for _, logV := range logPublicKeyChangeds {
 			if identity == logV.Identity {
 				DidPublicKeyLogs = append(DidPublicKeyLogs, logV)
@@ -67,11 +72,12 @@ func (r *resolver) GetDIDLogs(address string) (*DIDLog, error) {
 			}
 		}
 	}
+	// fmt.Println(DidPublicKeyLogs)
 	var DidAuthenticationLogs = make([]LogAuthenticationChanged, 0)
 	for authenticationChanged.Sign() != 0 {
 		logAuthenticationChangeds, err := r.EventAuthenticationChanged(authenticationChanged)
 		if err != nil {
-			return nil, err
+			return DIDLog{}, err
 		}
 		for _, logV := range logAuthenticationChangeds {
 			if identity == logV.Identity {
@@ -86,7 +92,7 @@ func (r *resolver) GetDIDLogs(address string) (*DIDLog, error) {
 	for attributeChanged.Sign() != 0 {
 		logAttributeChangeds, err := r.EventAttributeChanged(attributeChanged)
 		if err != nil {
-			return nil, err
+			return DIDLog{}, err
 		}
 		for _, logV := range logAttributeChangeds {
 			if identity == logV.Identity {
@@ -97,10 +103,10 @@ func (r *resolver) GetDIDLogs(address string) (*DIDLog, error) {
 			}
 		}
 	}
-	return &DIDLog{DidPublicKeyLogs, DidAuthenticationLogs, DidAttributeLogs}, nil
+	return DIDLog{DidPublicKeyLogs, DidAuthenticationLogs, DidAttributeLogs}, nil
 }
 
-func (r *resolver) getDIDPublicKeys(address string, did *DIDLog) ([]DIDPublicKey, error) {
+func (r *resolver) getDIDPublicKeys(address string, did DIDLog) ([]DIDPublicKey, error) {
 	owner, err := r.IdentityOwner(address)
 	if err != nil {
 		return nil, err
@@ -112,8 +118,9 @@ func (r *resolver) getDIDPublicKeys(address string, did *DIDLog) ([]DIDPublicKey
 		"did:idhub:" + address,
 		owner})
 	for i, logV := range did.DidPublicKeyLogs {
+		fmt.Println(logV.ValidTo)
 		ok, err := r.ValidPublicKey(address, "veriKey",
-			hex.EncodeToString(logV.PublicKey[:]))
+			hexutil.Encode(logV.PublicKey[:]))
 		if err != nil {
 			return nil, err
 		} else if ok {
@@ -121,13 +128,13 @@ func (r *resolver) getDIDPublicKeys(address string, did *DIDLog) ([]DIDPublicKey
 				"did:idhub:" + address + "#" + string(i+1),
 				"Secp256k1VerificationKey2018",
 				"did:idhub:" + address,
-				hex.EncodeToString(logV.PublicKey[:])})
+				hexutil.Encode(logV.PublicKey[:])})
 		}
 	}
 	return DIDPublicKeys, nil
 }
 
-func (r *resolver) getDIDAuthentications(address string, did *DIDLog) ([]DIDAuthentication, error) {
+func (r *resolver) getDIDAuthentications(address string, did DIDLog) ([]DIDAuthentication, error) {
 	DIDPublicKeys, err := r.getDIDPublicKeys(address, did)
 	if err != nil {
 		return nil, err
@@ -137,13 +144,14 @@ func (r *resolver) getDIDAuthentications(address string, did *DIDLog) ([]DIDAuth
 		"Secp256k1SignatureAuthentication2018",
 		"did:idhub:" + address + "#owner"})
 	for _, logV := range did.DidAuthenticationLogs {
+		fmt.Println(hexutil.Encode(logV.Authentication[:]))
 		ok, err := r.ValidAuthentication(address, "sigAuth",
-			hex.EncodeToString(logV.Authentication[:]))
+			hexutil.Encode(logV.Authentication[:]))
 		if err != nil {
 			return nil, err
 		} else if ok {
 			for _, v := range DIDPublicKeys {
-				if hex.EncodeToString(logV.Authentication[:]) ==
+				if hexutil.Encode(logV.Authentication[:]) ==
 					v.PublicKeyHex {
 					DIDAuthentications = append(DIDAuthentications,
 						DIDAuthentication{
@@ -156,33 +164,37 @@ func (r *resolver) getDIDAuthentications(address string, did *DIDLog) ([]DIDAuth
 	return DIDAuthentications, nil
 }
 
-func (r *resolver) getDIDAttributes(address string, did *DIDLog) []DIDAttribute {
+func (r *resolver) getDIDAttributes(address string, did DIDLog) []DIDAttribute {
 	DIDAttributes := make([]DIDAttribute, 0)
 	for _, logV := range did.DidAttributeLogs {
+		// fmt.Println(logV)
 		DIDAttributes = append(DIDAttributes, DIDAttribute{
 			string(logV.Name[:]),
 			string(logV.Value[:])})
 	}
+	// fmt.Println(DIDAttributes)
 	return DIDAttributes
 }
 
-func (r *resolver) getDIDDocument(address string) (*DIDDocument, error) {
-	var document *DIDDocument
+func (r *resolver) getDIDDocument(address string) (DIDDocument, error) {
+	var document DIDDocument
 	document.Context = "https://w3id.org/did/v1"
 	document.Id = "did:idhub:" + address
 	did, err := r.GetDIDLogs(address)
+	fmt.Println(did)
 	if err != nil {
-		return nil, err
+		return DIDDocument{}, err
 	}
 	document.PublicKey, err = r.getDIDPublicKeys(address, did)
 	if err != nil {
-		return nil, err
+		return DIDDocument{}, err
 	}
 	document.Authentication, err = r.getDIDAuthentications(address, did)
 	if err != nil {
-		return nil, err
+		return DIDDocument{}, err
 	}
 	document.Service = r.getDIDAttributes(address, did)
+	fmt.Println(document)
 	return document, nil
 }
 
