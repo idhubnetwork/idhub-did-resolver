@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -183,6 +184,7 @@ func (r *resolver) getDIDDocument(address string) (DIDDocument, error) {
 	if err != nil {
 		return DIDDocument{}, err
 	}
+	document.Service = r.getDIDAttributes(address, did)
 	return document, nil
 }
 
@@ -195,5 +197,7 @@ func (r *resolver) GetDocument(address string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println(document)
+	fmt.Println(string(data))
 	return string(data), nil
 }
