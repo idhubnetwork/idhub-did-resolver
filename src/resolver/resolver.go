@@ -25,7 +25,6 @@ func init() {
 	urls["infuraMainnet"] = "https://mainnet.infura.io"
 	urls["infuraRopsten"] = "https://ropsten.infura.io"
 	urls["infuraRinkeby"] = "https://rinkeby.infura.io"
-	urls["etherscanRopsten"] = "https://ropsten.etherscan.io"
 }
 
 func NewResolver(net string, address string) (*resolver, error) {

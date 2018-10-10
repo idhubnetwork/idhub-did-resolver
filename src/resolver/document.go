@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -46,24 +45,20 @@ func (r *resolver) GetDIDLogs(address string) (DIDLog, error) {
 	if err != nil {
 		return DIDLog{}, err
 	}
-	// fmt.Println(publicKeyChanged)
 	authenticationChanged, err := r.GetAuthenticationChanged(address)
 	if err != nil {
 		return DIDLog{}, err
 	}
-	// fmt.Println(authenticationChanged)
 	attributeChanged, err := r.GetAttributeChanged(address)
 	if err != nil {
 		return DIDLog{}, err
 	}
-	// fmt.Println(attributeChanged)
 	var DidPublicKeyLogs = make([]LogPublicKeyChanged, 0)
 	for publicKeyChanged.Sign() != 0 {
 		logPublicKeyChangeds, err := r.EventPublicKeyChanged(publicKeyChanged)
 		if err != nil {
 			return DIDLog{}, err
 		}
-		fmt.Println(logPublicKeyChangeds)
 		for _, logV := range logPublicKeyChangeds {
 			if identity == logV.Identity {
 				DidPublicKeyLogs = append(DidPublicKeyLogs, logV)
@@ -73,7 +68,6 @@ func (r *resolver) GetDIDLogs(address string) (DIDLog, error) {
 			}
 		}
 	}
-	// fmt.Println(DidPublicKeyLogs)
 	var DidAuthenticationLogs = make([]LogAuthenticationChanged, 0)
 	for authenticationChanged.Sign() != 0 {
 		logAuthenticationChangeds, err := r.EventAuthenticationChanged(authenticationChanged)
@@ -119,7 +113,6 @@ func (r *resolver) getDIDPublicKeys(address string, did DIDLog) ([]DIDPublicKey,
 		"did:idhub:" + address,
 		owner})
 	for i, logV := range did.DidPublicKeyLogs {
-		fmt.Println(logV.ValidTo)
 		ok, err := r.ValidPublicKey(address, "veriKey",
 			hexutil.Encode(logV.PublicKey[:]))
 		if err != nil {
@@ -145,7 +138,6 @@ func (r *resolver) getDIDAuthentications(address string, did DIDLog) ([]DIDAuthe
 		"Secp256k1SignatureAuthentication2018",
 		"did:idhub:" + address + "#owner"})
 	for _, logV := range did.DidAuthenticationLogs {
-		fmt.Println(hexutil.Encode(logV.Authentication[:]))
 		ok, err := r.ValidAuthentication(address, "sigAuth",
 			hexutil.Encode(logV.Authentication[:]))
 		if err != nil {
@@ -168,12 +160,10 @@ func (r *resolver) getDIDAuthentications(address string, did DIDLog) ([]DIDAuthe
 func (r *resolver) getDIDAttributes(address string, did DIDLog) []DIDAttribute {
 	DIDAttributes := make([]DIDAttribute, 0)
 	for _, logV := range did.DidAttributeLogs {
-		// fmt.Println(logV)
 		DIDAttributes = append(DIDAttributes, DIDAttribute{
 			string(logV.Name[:]),
 			string(logV.Value[:])})
 	}
-	// fmt.Println(DIDAttributes)
 	return DIDAttributes
 }
 
@@ -182,7 +172,6 @@ func (r *resolver) getDIDDocument(address string) (DIDDocument, error) {
 	document.Context = "https://w3id.org/did/v1"
 	document.Id = "did:idhub:" + address
 	did, err := r.GetDIDLogs(address)
-	fmt.Println(did)
 	if err != nil {
 		return DIDDocument{}, err
 	}
@@ -194,8 +183,6 @@ func (r *resolver) getDIDDocument(address string) (DIDDocument, error) {
 	if err != nil {
 		return DIDDocument{}, err
 	}
-	document.Service = r.getDIDAttributes(address, did)
-	fmt.Println(document)
 	return document, nil
 }
 

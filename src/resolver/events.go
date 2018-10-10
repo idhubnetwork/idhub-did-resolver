@@ -26,7 +26,7 @@ type LogAuthenticationChanged struct {
 
 type LogAttributeChanged struct {
 	Identity       common.Address
-	Name           [32]byte
+	Name           []byte
 	Value          []byte
 	ValidTo        *big.Int
 	PreviousChange *big.Int
